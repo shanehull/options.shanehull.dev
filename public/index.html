@@ -29,7 +29,7 @@
         max-width: 1200px;
         margin: 0 auto;
         display: grid;
-        grid-template-columns: 300px 1fr;
+        grid-template-columns: 320px 1fr;
         gap: 20px;
       }
 
@@ -251,7 +251,7 @@
       .heatmap th {
         background: #21262d;
         color: var(--text-sec);
-        vertical-align: bottom; /* Align date headers to bottom */
+        vertical-align: bottom;
       }
       .heatmap td {
         color: var(--white);
@@ -421,7 +421,7 @@
   <body>
     <div class="container">
       <div class="controls">
-        <h2>Options Calculator</h2>
+        <h2>Strategy Builder</h2>
 
         <div class="mode-switcher">
           <div
@@ -466,6 +466,16 @@
 
         <div id="chainControls">
           <div class="input-group">
+            <label id="priceLabel">Underlying Price (Override)</label>
+            <input
+              type="number"
+              id="currentPrice"
+              step="0.01"
+              oninput="calculateStrategy('price')"
+            />
+          </div>
+
+          <div class="input-group">
             <label>Expiration</label>
             <select
               id="expirySelect"
@@ -475,7 +485,7 @@
               type="date"
               id="expiryInputManual"
               style="display: none"
-              oninput="calculateStrategy()"
+              oninput="calculateStrategy('expiry')"
             />
           </div>
 
@@ -487,13 +497,13 @@
               id="strikeInputManual"
               value="100"
               style="display: none"
-              oninput="calculateStrategy()"
+              oninput="calculateStrategy('strike')"
             />
           </div>
 
           <div class="input-group">
             <label>Type</label>
-            <select id="typeSelect" onchange="onStrikeChange()">
+            <select id="typeSelect" onchange="onStrikeChange('type')">
               <option value="call">Call</option>
               <option value="put">Put</option>
             </select>
@@ -501,7 +511,7 @@
 
           <div class="input-group">
             <label>Position</label>
-            <select id="sideSelect" onchange="calculateStrategy()">
+            <select id="sideSelect" onchange="calculateStrategy('side')">
               <option value="long">Buy (Long)</option>
               <option value="short">Sell (Short)</option>
             </select>
@@ -513,19 +523,31 @@
               type="number"
               id="contractPrice"
               step="0.01"
-              oninput="calculateStrategy()"
+              oninput="calculateStrategy('contract')"
             />
           </div>
 
-          <div class="input-group">
-            <label>Contracts</label>
-            <input
-              type="number"
-              id="contracts"
-              value="1"
-              min="1"
-              oninput="calculateStrategy()"
-            />
+          <div style="display: flex; gap: 10px">
+            <div class="input-group" style="flex: 1">
+              <label>Contracts</label>
+              <input
+                type="number"
+                id="contracts"
+                value="1"
+                min="1"
+                oninput="calculateStrategy('contracts')"
+              />
+            </div>
+            <div class="input-group" style="flex: 1">
+              <label>Lot Size</label>
+              <input
+                type="number"
+                id="lotSize"
+                value="100"
+                min="1"
+                oninput="calculateStrategy('lot')"
+              />
+            </div>
           </div>
 
           <div class="input-group">
@@ -534,7 +556,7 @@
               type="number"
               id="ivInput"
               step="0.1"
-              oninput="calculateStrategy()"
+              oninput="calculateStrategy('iv')"
             />
           </div>
 
@@ -557,23 +579,6 @@
               >
             </div>
           </div>
-        </div>
-
-        <div
-          class="input-group"
-          style="
-            margin-top: 20px;
-            border-top: 1px solid var(--border);
-            padding-top: 15px;
-          "
-        >
-          <label id="priceLabel">Manual Price Override</label>
-          <input
-            type="number"
-            id="currentPrice"
-            step="0.01"
-            oninput="calculateStrategy()"
-          />
         </div>
       </div>
 
@@ -777,7 +782,7 @@
           if (!document.getElementById("ivInput").value)
             document.getElementById("ivInput").value = 50;
 
-          calculateStrategy();
+          calculateStrategy("price"); // Trigger update
         } else {
           searchDiv.style.display = "block";
           expSelect.style.display = "block";
@@ -823,6 +828,7 @@
         params.set("type", document.getElementById("typeSelect").value);
         params.set("pos", document.getElementById("sideSelect").value);
         params.set("contracts", document.getElementById("contracts").value);
+        params.set("lot", document.getElementById("lotSize").value);
         params.set("iv", document.getElementById("ivInput").value);
         params.set("range", document.getElementById("rangeSlider").value);
         params.set("price", document.getElementById("currentPrice").value);
@@ -856,6 +862,7 @@
         setVal("typeSelect", "type");
         setVal("sideSelect", "pos");
         setVal("contracts", "contracts");
+        setVal("lotSize", "lot");
         setVal("ivInput", "iv");
         setVal("rangeSlider", "range");
         setVal("currentPrice", "price");
@@ -965,12 +972,14 @@
 
         hideStatus();
 
+        // 1. Intercept Demo Request (Priority over API)
         if (symbol === "AAPL (DEMO)") {
           isDemoMode = true;
           simulateData("AAPL");
           return;
         }
 
+        // 2. Check API Key
         if (!apiKey) {
           localStorage.removeItem("opscalc_apikey");
           showModal("instructions");
@@ -1185,9 +1194,9 @@
         onStrikeChange();
       }
 
-      function onStrikeChange() {
+      function onStrikeChange(source) {
         if (isManualMode) {
-          calculateStrategy();
+          calculateStrategy(source);
           return;
         }
         const strike = parseFloat(
@@ -1197,6 +1206,7 @@
         const list = type === "call" ? currentChain.calls : currentChain.puts;
         const opt = list.find((o) => Math.abs(o.strike - strike) < 0.01);
 
+        // UPDATE CONTRACT PRICE FIELD
         if (opt) {
           document.getElementById("contractPrice").value =
             opt.lastPrice.toFixed(2);
@@ -1211,8 +1221,12 @@
 
       // --- SIMULATION HELPERS ---
       function getDemoChain(price, expiryTimestamp) {
-        let now = new Date().getTime() / 1000;
-        let T_years = (expiryTimestamp - now) / (365 * 24 * 60 * 60);
+        // Normalize 'now' to ensure consistent date diffs
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        let nowSec = Math.floor(now.getTime() / 1000);
+
+        let T_years = (expiryTimestamp - nowSec) / (365 * 24 * 60 * 60);
         if (T_years < 0.001) T_years = 0.001;
 
         let chain = { calls: [], puts: [] };
@@ -1261,9 +1275,9 @@
 
         document.getElementById("ticker").value = "AAPL (Demo)";
 
-        // Fix for expiration date mismatch: Normalize 'now' to midnight
+        // Fix for expiry consistency: Normalize dates to midnight
         const now = new Date();
-        now.setHours(0, 0, 0, 0); // Crucial fix for refresh stability!
+        now.setHours(0, 0, 0, 0);
 
         const offsets = [30, 60, 90, 120, 150, 180, 270, 360, 720];
         const dates = offsets.map((days) => {
@@ -1273,7 +1287,7 @@
         });
 
         const sel = document.getElementById("expirySelect");
-        const currentSelection = sel.value;
+        const currentSelection = parseInt(sel.value);
         sel.innerHTML = "";
 
         dates.forEach((d) => {
@@ -1283,7 +1297,8 @@
           sel.appendChild(opt);
         });
 
-        if (currentSelection && dates.includes(parseInt(currentSelection))) {
+        // Restore previous selection if valid
+        if (currentSelection && dates.includes(currentSelection)) {
           sel.value = currentSelection;
         } else {
           sel.value = dates[0];
@@ -1298,14 +1313,15 @@
       }
 
       // --- CALCULATION ---
-      function calculateStrategy() {
+      function calculateStrategy(source = "") {
         if (!isManualMode && (!currentChain || !quoteData)) return;
         updateUrlState();
 
-        let strike, type, side, contracts, S, rangePct, iv, T, opt;
+        let strike, type, side, contracts, lotSize, S, rangePct, iv, T, opt;
         type = document.getElementById("typeSelect").value;
         side = document.getElementById("sideSelect").value;
         contracts = parseInt(document.getElementById("contracts").value);
+        lotSize = parseInt(document.getElementById("lotSize").value) || 100;
         S = parseFloat(document.getElementById("currentPrice").value);
         rangePct =
           parseFloat(document.getElementById("rangeSlider").value) / 100;
@@ -1340,17 +1356,38 @@
           if (T < 0.001) T = 0.001;
         }
 
-        let inputPrice = parseFloat(
-          document.getElementById("contractPrice").value,
-        );
-        if (!isNaN(inputPrice)) {
-          opt.lastPrice = inputPrice;
-        } else {
-          document.getElementById("contractPrice").value =
-            opt.lastPrice.toFixed(2);
+        // Logic for Contract Price Update in Manual Mode
+        let inputField = document.getElementById("contractPrice");
+        let inputVal = parseFloat(inputField.value);
+
+        // Only auto-update price if the source is Underlying, Strike, or Type.
+        // OR if the input box is currently empty/invalid.
+        // Otherwise, respect the user's manual entry.
+        if (
+          isManualMode &&
+          (source === "price" ||
+            source === "strike" ||
+            source === "type" ||
+            isNaN(inputVal))
+        ) {
+          opt.lastPrice = opt.lastPrice; // Keep theoretical
+          inputField.value = opt.lastPrice.toFixed(2);
+        } else if (isManualMode && !isNaN(inputVal)) {
+          // If triggered by other fields (e.g. contracts), keep user price
+          opt.lastPrice = inputVal;
+        } else if (!isManualMode) {
+          // In search mode, allow override, otherwise use market
+          if (!isNaN(inputVal) && source === "contract") {
+            opt.lastPrice = inputVal;
+          } else if (source !== "contract") {
+            // Reset to market price if ticker changed, etc
+            // But here we rely on onStrikeChange to set the initial value
+            // If user edits field, we use that.
+            if (!isNaN(inputVal)) opt.lastPrice = inputVal;
+          }
         }
 
-        const entry = opt.lastPrice * 100 * contracts;
+        const entry = opt.lastPrice * lotSize * contracts;
         const txt =
           side === "long"
             ? `Debit $${entry.toFixed(0)}`
@@ -1380,6 +1417,7 @@
           type,
           side,
           contracts,
+          lotSize,
           cost: opt.lastPrice,
           rangePct,
           entry,
@@ -1394,6 +1432,7 @@
           type,
           side,
           contracts,
+          lotSize,
           opt.lastPrice,
           rangePct,
           entry,
@@ -1401,8 +1440,19 @@
       }
 
       function renderGrid(data) {
-        let { S, K, T, iv, type, side, contracts, cost, rangePct, entry } =
-          data;
+        let {
+          S,
+          K,
+          T,
+          iv,
+          type,
+          side,
+          contracts,
+          lotSize,
+          cost,
+          rangePct,
+          entry,
+        } = data;
         const div = document.getElementById("heatmapContainer");
         div.innerHTML = "";
         const tbl = document.createElement("table");
@@ -1446,9 +1496,11 @@
             let td = document.createElement("td");
             let theo = BlackScholes(type, p, K, d.t, 0.05, iv);
             let pl =
-              (side === "long" ? theo - cost : cost - theo) * 100 * contracts;
+              (side === "long" ? theo - cost : cost - theo) *
+              lotSize *
+              contracts;
 
-            let contractValue = theo * 100;
+            let contractValue = theo * lotSize;
 
             if (gridDisplayMode === "percent") {
               let roi = entry > 0 ? (pl / entry) * 100 : 0;
@@ -1481,6 +1533,7 @@
         type,
         side,
         contracts,
+        lotSize,
         cost,
         range,
         entryTotal,
@@ -1500,13 +1553,13 @@
 
           let valE = BlackScholes(type, p, K, 0.0001, 0.05, iv);
           let plE =
-            (side === "long" ? valE - cost : cost - valE) * 100 * contracts;
+            (side === "long" ? valE - cost : cost - valE) * lotSize * contracts;
           dataExp.push(plE);
           percentExp.push(entryTotal > 0 ? (plE / entryTotal) * 100 : 0);
 
           let valN = BlackScholes(type, p, K, T, 0.05, iv);
           let plN =
-            (side === "long" ? valN - cost : cost - valN) * 100 * contracts;
+            (side === "long" ? valN - cost : cost - valN) * lotSize * contracts;
           dataNow.push(plN);
           percentNow.push(entryTotal > 0 ? (plN / entryTotal) * 100 : 0);
         }
