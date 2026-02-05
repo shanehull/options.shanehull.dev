@@ -652,7 +652,7 @@
       let isRestoringState = false;
       let isDemoMode = false;
       let isManualMode = false;
-      let latestStrategyCalc = null; // Store math result for grid toggling
+      let latestStrategyCalc = null;
 
       // Default View Mode
       let gridDisplayMode = "dollar";
@@ -707,6 +707,7 @@
           isRestoringState = true;
           fetchData();
         } else {
+          // Initialize with demo data
           simulateData("AAPL");
         }
       })();
@@ -827,12 +828,17 @@
           suggestionsBox.style.display = "none";
           return;
         }
+
         if (searchTimeout) clearTimeout(searchTimeout);
 
         searchTimeout = setTimeout(async () => {
           const apiKey = document.getElementById("apiKey").value.trim();
+
+          // If no key and not trying to type the demo string manually
           if (!apiKey) {
+            // Allow them to type "AAPL (DEMO)" without interruption
             if ("AAPL (DEMO)".startsWith(query)) return;
+
             showModal("instructions");
             return;
           }
@@ -861,6 +867,7 @@
                 const div = document.createElement("div");
                 const name = i.name || i.shortname || i.longname || "";
                 div.innerHTML = `<strong>${i.symbol}</strong> - ${name}`;
+
                 div.onclick = () => {
                   if (searchTimeout) clearTimeout(searchTimeout);
                   tickerInput.value = i.symbol;
@@ -900,8 +907,9 @@
 
         if (!apiKey) {
           localStorage.removeItem("opscalc_apikey");
-          let cleanSymbol = symbol.replace(/\s?\(DEMO\)/gi, "").trim();
-          if (cleanSymbol === "AAPL") {
+
+          // STRICT CHECK: Only "AAPL (DEMO)" allowed
+          if (symbol === "AAPL (DEMO)") {
             isDemoMode = true;
             simulateData("AAPL");
           } else {
@@ -933,6 +941,7 @@
             showModal("429");
             return;
           }
+
           if (response.status === 403) {
             toggleLoading(false);
             showModal("403");
@@ -941,13 +950,16 @@
           if (!response.ok) throw new Error("API Connection Failed");
 
           const data = await response.json();
-          if (!data.body || data.body.length === 0)
+
+          if (!data.body || data.body.length === 0) {
             throw new Error(`No data found for symbol: ${symbol}`);
+          }
 
           const result = data.body[0];
           const dates = result.expirationDates || [];
           let options = result.options[0];
 
+          // Double Fetch Logic
           if (
             (!options ||
               (!options.calls && !options.puts) ||
@@ -956,6 +968,7 @@
           ) {
             const firstExp = dates[0];
             toggleLoading(true, "Fetching Chain...");
+
             const resp2 = await fetch(
               `https://${API_HOST}/api/v1/markets/options?ticker=${symbol}&expiration=${firstExp}&display=list`,
               {
@@ -966,8 +979,9 @@
               },
             );
             const data2 = await resp2.json();
-            if (data2.body && data2.body[0] && data2.body[0].options)
+            if (data2.body && data2.body[0] && data2.body[0].options) {
               options = data2.body[0].options[0];
+            }
           }
 
           if (
@@ -975,7 +989,9 @@
             ((!options.calls || options.calls.length === 0) &&
               (!options.puts || options.puts.length === 0))
           ) {
-            throw new Error(`No options data available for ${symbol}.`);
+            throw new Error(
+              `No options data available for ${symbol}. (Exchange data may not be supported)`,
+            );
           }
 
           const price = result.quote ? result.quote.regularMarketPrice : 0;
@@ -1001,6 +1017,7 @@
           }
 
           processOptions(options.calls, options.puts);
+
           controls.style.opacity = "1";
           controls.style.pointerEvents = "auto";
           toggleLoading(false);
@@ -1021,11 +1038,13 @@
           updateDemoChain();
           return;
         }
+
         const apiKey = document.getElementById("apiKey").value.trim();
         if (!apiKey) return;
 
         const symbol = document.getElementById("ticker").value.toUpperCase();
         const date = document.getElementById("expirySelect").value;
+
         toggleLoading(true, "Updating Chain...");
 
         try {
@@ -1033,11 +1052,14 @@
           const response = await fetch(url, {
             headers: { "X-RapidAPI-Key": apiKey, "X-RapidAPI-Host": API_HOST },
           });
+
           if (response.status === 429) {
             showModal("429");
             return;
           }
+
           const data = await response.json();
+
           if (data.body && data.body[0] && data.body[0].options) {
             const opt = data.body[0].options[0];
             processOptions(opt.calls, opt.puts);
@@ -1125,18 +1147,22 @@
         isRestoringState ? restoreStateFromUrl() : calculateStrategy();
       }
 
-      // --- SIMULATION ---
+      // --- SIMULATION HELPERS ---
       function getDemoChain(price, expiryTimestamp) {
+        // Recalculate theoretical prices based on new time-to-expiry
         let now = new Date().getTime() / 1000;
         let T_years = (expiryTimestamp - now) / (365 * 24 * 60 * 60);
         if (T_years < 0.001) T_years = 0.001;
+
         let chain = { calls: [], puts: [] };
         let start = Math.floor(price * 0.7),
           end = Math.floor(price * 1.3);
+
         for (let i = start; i < end; i += 5) {
           let iv = 0.3 + Math.abs(i - price) / 2000;
           let cP = BlackScholes("call", price, i, T_years, 0.05, iv);
           let pP = BlackScholes("put", price, i, T_years, 0.05, iv);
+
           chain.calls.push({
             strike: i,
             lastPrice: cP > 0.01 ? cP : 0.01,
@@ -1156,10 +1182,14 @@
         let expiryDate = parseInt(
           document.getElementById("expirySelect").value,
         );
+
         let newChain = getDemoChain(price, expiryDate);
+
+        // Update global chain but don't rebuild dropdowns
         currentChain = newChain;
         currentChain.calls.sort((a, b) => a.strike - b.strike);
         currentChain.puts.sort((a, b) => a.strike - b.strike);
+
         updateStrikes();
       }
 
@@ -1168,8 +1198,11 @@
         let price = 225;
         document.getElementById("currentPrice").value = price;
         quoteData = { regularMarketPrice: price };
-        let cleanSymbol = symbol.replace(/\s?\(DEMO\)/gi, "").trim();
-        document.getElementById("ticker").value = cleanSymbol + " (Demo)";
+
+        // Force ticker to explicitly be what is expected in demo mode
+        document.getElementById("ticker").value = "AAPL (Demo)";
+
+        // 1. Generate Realistic Dates (Monthly approx)
         const now = new Date();
         const offsets = [30, 60, 90, 120, 150, 180, 270, 360, 720];
         const dates = offsets.map((days) => {
@@ -1177,22 +1210,29 @@
           d.setDate(d.getDate() + days);
           return Math.floor(d.getTime() / 1000);
         });
+
+        // 2. Populate Dropdown (Initial Only)
         const sel = document.getElementById("expirySelect");
         const currentSelection = sel.value;
         sel.innerHTML = "";
+
         dates.forEach((d) => {
           let opt = document.createElement("option");
           opt.value = d;
           opt.innerText = new Date(d * 1000).toISOString().split("T")[0];
           sel.appendChild(opt);
         });
+
         if (currentSelection && dates.includes(parseInt(currentSelection))) {
           sel.value = currentSelection;
         } else {
           sel.value = dates[0];
         }
+
+        // 3. Generate Initial Chain
         let chain = getDemoChain(price, parseInt(sel.value));
         currentChain = chain;
+
         updateStrikes();
         document.getElementById("chainControls").style.opacity = "1";
         document.getElementById("chainControls").style.pointerEvents = "auto";
@@ -1229,6 +1269,7 @@
           opt = list.find((o) => Math.abs(o.strike - strike) < 0.01);
           if (!opt)
             opt = { lastPrice: BlackScholes(type, S, strike, 0.1, 0.05, iv) };
+
           const expTimestamp = parseInt(
             document.getElementById("expirySelect").value,
           );
@@ -1334,8 +1375,12 @@
             let theo = BlackScholes(type, p, K, d.t, 0.05, iv);
             let pl =
               (side === "long" ? theo - cost : cost - theo) * 100 * contracts;
+
+            // Value Mode: ONE contract's market value (x100)
+            // Agnostic of position size/direction
             let contractValue = theo * 100;
 
+            // Display Logic
             if (gridDisplayMode === "percent") {
               let roi = entry > 0 ? (pl / entry) * 100 : 0;
               td.innerText =
@@ -1346,6 +1391,7 @@
               td.innerText = Math.round(pl);
             }
 
+            // Color Logic (Always based on P/L)
             let opacity = Math.min(1, Math.abs(pl) / (entry || 500));
             if (pl > 0) {
               td.style.background = `rgba(35, 134, 54, ${opacity})`;
@@ -1383,6 +1429,7 @@
         for (let i = -steps; i <= steps; i++) {
           let p = S * (1 + (i / steps) * range);
           labels.push(p.toFixed(2));
+
           let valE = BlackScholes(type, p, K, 0.0001, 0.05, iv);
           let plE =
             (side === "long" ? valE - cost : cost - valE) * 100 * contracts;
@@ -1477,12 +1524,22 @@
         const title = modal.querySelector("h2");
         const body = document.getElementById("modalBody");
         const closeBtn = document.getElementById("modalCloseBtn");
+
+        // Clear previous content
         body.innerHTML = "";
         closeBtn.style.display = "none";
 
         if (type === "instructions") {
           title.innerText = "Get Your API Key";
-          body.innerHTML = `<div class="modal-steps" style="text-align: left;"><p><span class="step-num">Step 1:</span> Visit <a href="https://rapidapi.com/apidojo/api/yahoo-finance1" target="_blank">RapidAPI Yahoo Finance</a></p><p><span class="step-num">Step 2:</span> Log in and click "Subscribe to Test" (Free Tier)</p><p><span class="step-num">Step 3:</span> Copy your <code>X-RapidAPI-Key</code></p><p><span class="step-num">Step 4:</span> Paste it here to fetch live data</p></div><p style="font-size:0.9rem; color:var(--text-sec); margin-bottom:15px;">Or use <strong>AAPL (Demo)</strong> to see a demo.</p>`;
+          body.innerHTML = `
+            <div class="modal-steps" style="text-align: left;">
+                <p><span class="step-num">Step 1:</span> Visit <a href="https://rapidapi.com/apidojo/api/yahoo-finance1" target="_blank">RapidAPI Yahoo Finance</a></p>
+                <p><span class="step-num">Step 2:</span> Log in and click "Subscribe to Test" (Free Tier)</p>
+                <p><span class="step-num">Step 3:</span> Copy your <code>X-RapidAPI-Key</code></p>
+                <p><span class="step-num">Step 4:</span> Paste it here to fetch live data</p>
+            </div>
+            <p style="font-size:0.9rem; color:var(--text-sec); margin-bottom:15px;">Or use <strong>AAPL (Demo)</strong> to see a demo.</p>
+        `;
         } else if (type === "429") {
           title.innerText = "⚠️ Rate Limit Exceeded (429)";
           body.innerHTML = `<p>You have hit the request limit for this API Key. Please wait or upgrade your plan.</p>`;
@@ -1491,6 +1548,7 @@
           title.innerText = "⚠️ Access Denied (403)";
           body.innerHTML = `<p>Access forbidden. Please check your API Key.</p>`;
         }
+
         modal.style.display = "flex";
       }
       function closeModal() {
