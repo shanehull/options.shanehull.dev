@@ -5,13 +5,13 @@ A real-time options trading calculator deployed on Cloudflare Pages.
 ## Setup
 
 ```bash
-npm install
+yarn install
 ```
 
 ## Local Development
 
 ```bash
-npm run dev
+yarn run dev
 ```
 
 Visit `http://localhost:8788`
@@ -19,7 +19,7 @@ Visit `http://localhost:8788`
 ## Deploy
 
 ```bash
-npm run deploy
+yarn run deploy
 ```
 
 Or push to main/master branch for automatic GitHub Actions deployment.
