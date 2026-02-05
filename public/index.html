@@ -771,9 +771,8 @@
           controls.style.opacity = "1";
           controls.style.pointerEvents = "auto";
 
-          // DATA CLEAR LOGIC: Reset for manual Mode
           if (quoteData) {
-            quoteData = null; // Clear old API data
+            quoteData = null;
             document.getElementById("currentPrice").value = 100;
             document.getElementById("strikeInputManual").value = 100;
           }
@@ -782,7 +781,6 @@
           if (!document.getElementById("ivInput").value)
             document.getElementById("ivInput").value = 50;
 
-          // Only calculate if we are NOT in the middle of restoring from URL
           if (!isRestoringState) calculateStrategy("price");
         } else {
           searchDiv.style.display = "block";
@@ -791,8 +789,6 @@
           strSelect.style.display = "block";
           strInput.style.display = "none";
           priceLabel.innerText = "Manual Price Override";
-
-          // Switch back to search: try fetching data immediately
           if (!isRestoringState) fetchData();
         }
       }
@@ -812,7 +808,6 @@
         document.getElementById("toggleValue").className =
           mode === "value" ? "toggle-btn active" : "toggle-btn";
 
-        // Use cached calculation result to only redraw grid
         if (latestStrategyCalc) {
           renderGrid(latestStrategyCalc);
         } else {
@@ -855,7 +850,7 @@
         const params = new URLSearchParams(window.location.search);
         const mode = params.get("mode");
 
-        // Critical: Set this true so toggleInputMode doesn't trigger partial calc
+        // Set flag to prevent intermediate calcs
         isRestoringState = true;
 
         if (mode === "manual") {
@@ -874,7 +869,7 @@
         setVal("ivInput", "iv");
         setVal("rangeSlider", "range");
         setVal("currentPrice", "price");
-        setVal("contractPrice", "cprice"); // Populate input
+        setVal("contractPrice", "cprice");
         document.getElementById("rangeValue").innerText =
           document.getElementById("rangeSlider").value + "%";
 
@@ -882,9 +877,8 @@
           setVal("strikeInputManual", "strike");
           setVal("expiryInputManual", "exp");
 
-          // Now we are done setting values.
           isRestoringState = false;
-          // Trigger calc with 'contract' source to force use of the contractPrice input
+          // Trigger calc with explicit 'contract' source to use the restored cprice
           calculateStrategy("contract");
         } else {
           setVal("expirySelect", "exp");
@@ -910,11 +904,8 @@
         searchTimeout = setTimeout(async () => {
           const apiKey = document.getElementById("apiKey").value.trim();
 
-          // If no key and not trying to type the demo string manually
           if (!apiKey) {
-            // Allow them to type "AAPL (DEMO)" without interruption
             if ("AAPL (DEMO)".startsWith(query)) return;
-
             showModal("instructions");
             return;
           }
@@ -981,14 +972,13 @@
 
         hideStatus();
 
-        // 1. Intercept Demo Request (Priority over API)
         if (symbol === "AAPL (DEMO)") {
           isDemoMode = true;
           simulateData("AAPL");
+          isRestoringState = false; // Ensure restored state is reset
           return;
         }
 
-        // 2. Check API Key
         if (!apiKey) {
           localStorage.removeItem("opscalc_apikey");
           showModal("instructions");
@@ -1036,7 +1026,6 @@
           const dates = result.expirationDates || [];
           let options = result.options[0];
 
-          // Double Fetch Logic
           if (
             (!options ||
               (!options.calls && !options.puts) ||
@@ -1098,6 +1087,7 @@
           controls.style.opacity = "1";
           controls.style.pointerEvents = "auto";
           toggleLoading(false);
+          isRestoringState = false; // Reset restore flag
         } catch (error) {
           console.error(error);
           toggleLoading(false);
@@ -1213,24 +1203,32 @@
         );
         const type = document.getElementById("typeSelect").value;
         const list = type === "call" ? currentChain.calls : currentChain.puts;
-        const opt = list.find((o) => Math.abs(o.strike - strike) < 0.01);
+        let opt = list.find((o) => Math.abs(o.strike - strike) < 0.01);
 
-        // UPDATE CONTRACT PRICE FIELD
+        // Fallback: If not found in current list (e.g. OTM put), try other list for IV ref
+        if (!opt) {
+          const otherList =
+            type === "call" ? currentChain.puts : currentChain.calls;
+          opt = otherList.find((o) => Math.abs(o.strike - strike) < 0.01);
+        }
+
         if (opt) {
           document.getElementById("contractPrice").value =
             opt.lastPrice.toFixed(2);
           const params = new URLSearchParams(window.location.search);
-          if (!(isRestoringState && params.get("iv")))
+
+          // Only update IV if we are NOT restoring state OR if URL doesn't have IV
+          if (!(isRestoringState && params.get("iv"))) {
             document.getElementById("ivInput").value = (opt.iv * 100).toFixed(
               2,
             );
+          }
         }
         isRestoringState ? restoreStateFromUrl() : calculateStrategy();
       }
 
       // --- SIMULATION HELPERS ---
       function getDemoChain(price, expiryTimestamp) {
-        // Normalize 'now' to ensure consistent date diffs
         const now = new Date();
         now.setHours(0, 0, 0, 0);
         let nowSec = Math.floor(now.getTime() / 1000);
@@ -1284,7 +1282,6 @@
 
         document.getElementById("ticker").value = "AAPL (Demo)";
 
-        // Fix for expiry consistency: Normalize dates to midnight
         const now = new Date();
         now.setHours(0, 0, 0, 0);
 
@@ -1306,7 +1303,6 @@
           sel.appendChild(opt);
         });
 
-        // Restore previous selection if valid
         if (currentSelection && dates.includes(currentSelection)) {
           sel.value = currentSelection;
         } else {
@@ -1319,6 +1315,7 @@
         updateStrikes();
         document.getElementById("chainControls").style.opacity = "1";
         document.getElementById("chainControls").style.pointerEvents = "auto";
+        isRestoringState = false; // Reset restore flag
       }
 
       // --- CALCULATION ---
@@ -1368,9 +1365,6 @@
         let inputField = document.getElementById("contractPrice");
         let inputVal = parseFloat(inputField.value);
 
-        // Only auto-update price if the source is Underlying, Strike, or Type.
-        // OR if the input box is currently empty/invalid.
-        // Otherwise, respect the user's manual entry.
         if (
           isManualMode &&
           (source === "price" ||
@@ -1381,16 +1375,13 @@
           opt.lastPrice = opt.lastPrice; // Keep theoretical
           inputField.value = opt.lastPrice.toFixed(2);
         } else if (isManualMode && !isNaN(inputVal)) {
-          // If triggered by other fields (e.g. contracts) or RESTORED from URL, keep user price
+          // If triggered by other fields (e.g. contracts), keep user price
           opt.lastPrice = inputVal;
         } else if (!isManualMode) {
           // In search mode, allow override, otherwise use market
           if (!isNaN(inputVal) && source === "contract") {
             opt.lastPrice = inputVal;
           } else if (source !== "contract") {
-            // Reset to market price if ticker changed, etc
-            // But here we rely on onStrikeChange to set the initial value
-            // If user edits field, we use that.
             if (!isNaN(inputVal)) opt.lastPrice = inputVal;
           }
         }
