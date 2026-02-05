@@ -246,10 +246,12 @@
         text-align: center;
         border: 1px solid #30363d;
         min-width: 60px;
+        vertical-align: middle;
       }
       .heatmap th {
         background: #21262d;
         color: var(--text-sec);
+        vertical-align: bottom; /* Align date headers to bottom */
       }
       .heatmap td {
         color: var(--white);
@@ -1419,13 +1421,14 @@
           );
           dates.push({
             t: t_rem,
-            str: d.toLocaleDateString(undefined, {
+            dateStr: d.toLocaleDateString(undefined, {
               month: "short",
               day: "numeric",
             }),
+            yearStr: d.getFullYear(),
           });
           let th = document.createElement("th");
-          th.innerText = dates[i].str;
+          th.innerHTML = `${dates[i].dateStr}<br><span style="font-size:0.8em; opacity:0.7">${dates[i].yearStr}</span>`;
           trH.appendChild(th);
         }
         tbl.appendChild(trH);
