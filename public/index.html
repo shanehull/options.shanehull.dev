@@ -580,9 +580,7 @@
 
         <div class="heatmap-wrapper">
           <div class="heatmap-header">
-            <h3 style="margin: 0; font-size: 1rem; color: var(--text)">
-              Estimated Returns
-            </h3>
+            <h3>Estimated Returns</h3>
             <div class="toggle-group">
               <div
                 id="toggleDollar"
@@ -654,6 +652,7 @@
       let isRestoringState = false;
       let isDemoMode = false;
       let isManualMode = false;
+      let latestStrategyCalc = null; // Store math result for grid toggling
 
       // Default View Mode
       let gridDisplayMode = "dollar";
@@ -769,7 +768,13 @@
           mode === "percent" ? "toggle-btn active" : "toggle-btn";
         document.getElementById("toggleValue").className =
           mode === "value" ? "toggle-btn active" : "toggle-btn";
-        calculateStrategy();
+
+        // Use cached calculation result to only redraw grid
+        if (latestStrategyCalc) {
+          renderGrid(latestStrategyCalc);
+        } else {
+          calculateStrategy();
+        }
       }
 
       // --- URL STATE ---
@@ -1254,18 +1259,21 @@
           document.getElementById("maxLoss").className = "stat-box negative";
         }
 
-        renderGrid(
+        // Store calculation data object for quick grid switching
+        latestStrategyCalc = {
           S,
-          strike,
+          K: strike,
           T,
           iv,
           type,
           side,
           contracts,
-          opt.lastPrice,
+          cost: opt.lastPrice,
           rangePct,
           entry,
-        );
+        };
+
+        renderGrid(latestStrategyCalc);
         renderChart(
           S,
           strike,
@@ -1280,18 +1288,9 @@
         );
       }
 
-      function renderGrid(
-        S,
-        K,
-        T,
-        iv,
-        type,
-        side,
-        contracts,
-        cost,
-        range,
-        entryTotal,
-      ) {
+      function renderGrid(data) {
+        let { S, K, T, iv, type, side, contracts, cost, rangePct, entry } =
+          data;
         const div = document.getElementById("heatmapContainer");
         div.innerHTML = "";
         const tbl = document.createElement("table");
@@ -1323,7 +1322,7 @@
 
         const priceSteps = 10;
         for (let i = priceSteps; i >= -priceSteps; i--) {
-          let p = S * (1 + (i / priceSteps) * range);
+          let p = S * (1 + (i / priceSteps) * rangePct);
           const tr = document.createElement("tr");
           let tdP = document.createElement("td");
           tdP.innerText = p.toFixed(2);
@@ -1338,7 +1337,7 @@
             let contractValue = theo * 100;
 
             if (gridDisplayMode === "percent") {
-              let roi = entryTotal > 0 ? (pl / entryTotal) * 100 : 0;
+              let roi = entry > 0 ? (pl / entry) * 100 : 0;
               td.innerText =
                 roi > 0 ? `+${roi.toFixed(1)}%` : `${roi.toFixed(1)}%`;
             } else if (gridDisplayMode === "value") {
@@ -1347,7 +1346,7 @@
               td.innerText = Math.round(pl);
             }
 
-            let opacity = Math.min(1, Math.abs(pl) / (entryTotal || 500));
+            let opacity = Math.min(1, Math.abs(pl) / (entry || 500));
             if (pl > 0) {
               td.style.background = `rgba(35, 134, 54, ${opacity})`;
             } else {
