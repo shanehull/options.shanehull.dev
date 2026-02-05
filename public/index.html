@@ -473,7 +473,6 @@
               type="date"
               id="expiryInputManual"
               style="display: none"
-              onclick="try{this.showPicker()}catch(e){}"
               onchange="calculateStrategy()"
             />
           </div>
@@ -1316,6 +1315,9 @@
             document.getElementById("strikeInputManual").value,
           );
           let dateStr = document.getElementById("expiryInputManual").value;
+
+          if (!dateStr) return;
+
           let expiryDate = new Date(dateStr);
           let now = new Date();
           T = (expiryDate - now) / (1000 * 60 * 60 * 24 * 365);
