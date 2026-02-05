@@ -705,6 +705,7 @@
 
         const params = new URLSearchParams(window.location.search);
         const urlTicker = params.get("ticker");
+        const mode = params.get("mode");
 
         let d = new Date();
         d.setMonth(d.getMonth() + 1);
@@ -712,12 +713,13 @@
           .toISOString()
           .split("T")[0];
 
-        if (urlTicker) {
+        if (mode === "manual") {
+          restoreStateFromUrl();
+        } else if (urlTicker) {
           document.getElementById("ticker").value = urlTicker;
           isRestoringState = true;
           fetchData();
         } else {
-          // Initialize with demo data
           simulateData("AAPL");
         }
       })();
@@ -790,42 +792,66 @@
 
       // --- URL STATE ---
       function updateUrlState() {
-        if (isRestoringState || isManualMode) return;
+        if (isRestoringState) return;
         const params = new URLSearchParams();
-        const ticker = document.getElementById("ticker").value;
-        if (ticker.includes("Demo")) return;
 
-        params.set("ticker", ticker);
-        params.set("exp", document.getElementById("expirySelect").value);
-        params.set("strike", document.getElementById("strikeSelect").value);
+        params.set("mode", isManualMode ? "manual" : "search");
         params.set("type", document.getElementById("typeSelect").value);
         params.set("pos", document.getElementById("sideSelect").value);
-        params.set("iv", document.getElementById("ivInput").value);
         params.set("contracts", document.getElementById("contracts").value);
+        params.set("iv", document.getElementById("ivInput").value);
         params.set("range", document.getElementById("rangeSlider").value);
+        params.set("price", document.getElementById("currentPrice").value);
+        params.set("cprice", document.getElementById("contractPrice").value);
+
+        if (isManualMode) {
+          params.set(
+            "strike",
+            document.getElementById("strikeInputManual").value,
+          );
+          params.set("exp", document.getElementById("expiryInputManual").value);
+        } else {
+          const ticker = document.getElementById("ticker").value;
+          params.set("ticker", ticker);
+          params.set("exp", document.getElementById("expirySelect").value);
+          params.set("strike", document.getElementById("strikeSelect").value);
+        }
 
         window.history.replaceState({}, "", "?" + params.toString());
       }
 
       function restoreStateFromUrl() {
         const params = new URLSearchParams(window.location.search);
+        const mode = params.get("mode");
+
         const setVal = (id, key) => {
           const val = params.get(key);
           if (val) document.getElementById(id).value = val;
         };
 
-        setVal("expirySelect", "exp");
-        setVal("strikeSelect", "strike");
         setVal("typeSelect", "type");
         setVal("sideSelect", "pos");
-        setVal("ivInput", "iv");
         setVal("contracts", "contracts");
+        setVal("ivInput", "iv");
         setVal("rangeSlider", "range");
+        setVal("currentPrice", "price");
+        setVal("contractPrice", "cprice");
         document.getElementById("rangeValue").innerText =
           document.getElementById("rangeSlider").value + "%";
 
-        isRestoringState = false;
-        calculateStrategy();
+        if (mode === "manual") {
+          toggleInputMode("manual");
+          setVal("strikeInputManual", "strike");
+          setVal("expiryInputManual", "exp");
+          isRestoringState = false;
+          calculateStrategy();
+        } else {
+          // Search mode restoring is handled after fetch
+          setVal("expirySelect", "exp");
+          setVal("strikeSelect", "strike");
+          isRestoringState = false;
+          calculateStrategy();
+        }
       }
 
       // --- SEARCH ---
@@ -1151,7 +1177,7 @@
         // UPDATE CONTRACT PRICE FIELD
         if (opt) {
           document.getElementById("contractPrice").value =
-            opt.lastPrice.toFixed(2); // NEW: Update input
+            opt.lastPrice.toFixed(2);
           const params = new URLSearchParams(window.location.search);
           if (!(isRestoringState && params.get("iv")))
             document.getElementById("ivInput").value = (opt.iv * 100).toFixed(
@@ -1163,7 +1189,6 @@
 
       // --- SIMULATION HELPERS ---
       function getDemoChain(price, expiryTimestamp) {
-        // Recalculate theoretical prices based on new time-to-expiry
         let now = new Date().getTime() / 1000;
         let T_years = (expiryTimestamp - now) / (365 * 24 * 60 * 60);
         if (T_years < 0.001) T_years = 0.001;
@@ -1213,6 +1238,7 @@
         document.getElementById("currentPrice").value = price;
         quoteData = { regularMarketPrice: price };
 
+        // Force ticker to explicitly be what is expected in demo mode
         document.getElementById("ticker").value = "AAPL (Demo)";
 
         // 1. Generate Realistic Dates (Monthly approx)
@@ -1297,7 +1323,11 @@
           document.getElementById("contractPrice").value,
         );
         if (!isNaN(inputPrice)) {
-          opt.lastPrice = inputPrice; // Override with user input
+          opt.lastPrice = inputPrice;
+        } else {
+          // Update the input field if it was empty/invalid
+          document.getElementById("contractPrice").value =
+            opt.lastPrice.toFixed(2);
         }
 
         const entry = opt.lastPrice * 100 * contracts;
