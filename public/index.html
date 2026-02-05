@@ -788,7 +788,7 @@
           expInput.style.display = "none";
           strSelect.style.display = "block";
           strInput.style.display = "none";
-          priceLabel.innerText = "Manual Price Override";
+          priceLabel.innerText = "Underlying Price (Override)";
           if (!isRestoringState) fetchData();
         }
       }
@@ -1369,6 +1369,7 @@
           isManualMode &&
           (source === "price" ||
             source === "strike" ||
+            source === "expiry" ||
             source === "type" ||
             isNaN(inputVal))
         ) {
