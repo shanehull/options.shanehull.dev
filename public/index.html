@@ -421,7 +421,7 @@
   <body>
     <div class="container">
       <div class="controls">
-        <h2>Strategy Builder</h2>
+        <h2>Options Calculator</h2>
 
         <div class="mode-switcher">
           <div
@@ -782,7 +782,8 @@
           if (!document.getElementById("ivInput").value)
             document.getElementById("ivInput").value = 50;
 
-          calculateStrategy("price"); // Trigger update
+          // Only calculate if we are NOT in the middle of restoring from URL
+          if (!isRestoringState) calculateStrategy("price");
         } else {
           searchDiv.style.display = "block";
           expSelect.style.display = "block";
@@ -792,7 +793,7 @@
           priceLabel.innerText = "Manual Price Override";
 
           // Switch back to search: try fetching data immediately
-          fetchData();
+          if (!isRestoringState) fetchData();
         }
       }
 
@@ -854,6 +855,13 @@
         const params = new URLSearchParams(window.location.search);
         const mode = params.get("mode");
 
+        // Critical: Set this true so toggleInputMode doesn't trigger partial calc
+        isRestoringState = true;
+
+        if (mode === "manual") {
+          toggleInputMode("manual");
+        }
+
         const setVal = (id, key) => {
           const val = params.get(key);
           if (val) document.getElementById(id).value = val;
@@ -866,18 +874,19 @@
         setVal("ivInput", "iv");
         setVal("rangeSlider", "range");
         setVal("currentPrice", "price");
-        setVal("contractPrice", "cprice");
+        setVal("contractPrice", "cprice"); // Populate input
         document.getElementById("rangeValue").innerText =
           document.getElementById("rangeSlider").value + "%";
 
         if (mode === "manual") {
-          toggleInputMode("manual");
           setVal("strikeInputManual", "strike");
           setVal("expiryInputManual", "exp");
+
+          // Now we are done setting values.
           isRestoringState = false;
-          calculateStrategy();
+          // Trigger calc with 'contract' source to force use of the contractPrice input
+          calculateStrategy("contract");
         } else {
-          // Search mode restoring is handled after fetch
           setVal("expirySelect", "exp");
           setVal("strikeSelect", "strike");
           isRestoringState = false;
@@ -1315,7 +1324,6 @@
       // --- CALCULATION ---
       function calculateStrategy(source = "") {
         if (!isManualMode && (!currentChain || !quoteData)) return;
-        updateUrlState();
 
         let strike, type, side, contracts, lotSize, S, rangePct, iv, T, opt;
         type = document.getElementById("typeSelect").value;
@@ -1373,7 +1381,7 @@
           opt.lastPrice = opt.lastPrice; // Keep theoretical
           inputField.value = opt.lastPrice.toFixed(2);
         } else if (isManualMode && !isNaN(inputVal)) {
-          // If triggered by other fields (e.g. contracts), keep user price
+          // If triggered by other fields (e.g. contracts) or RESTORED from URL, keep user price
           opt.lastPrice = inputVal;
         } else if (!isManualMode) {
           // In search mode, allow override, otherwise use market
@@ -1408,6 +1416,8 @@
           document.getElementById("maxLoss").innerText = "Unlimited";
           document.getElementById("maxLoss").className = "stat-box negative";
         }
+
+        updateUrlState();
 
         latestStrategyCalc = {
           S,
