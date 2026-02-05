@@ -13,12 +13,10 @@
         --text: #c9d1d9;
         --text-sec: #8b949e;
         --accent: #58a6ff;
-        --accent-hover: #79c0ff;
         --green: #238636;
         --red: #da3633;
         --white: #ffffff;
         --hover-bg: #21262d;
-        --bg-elevated: #21262d;
       }
       body {
         font-family: -apple-system, system-ui, sans-serif;
@@ -39,9 +37,16 @@
       .controls {
         background: var(--panel);
         padding: 20px;
-        border-radius: 8px;
+        border-radius: 6px;
         border: 1px solid var(--border);
       }
+      h2 {
+        margin-top: 0;
+        font-size: 1.2rem;
+        color: var(--white);
+        margin-bottom: 20px;
+      }
+
       .input-group {
         margin-bottom: 15px;
         position: relative;
@@ -61,6 +66,7 @@
         padding: 8px;
         border-radius: 4px;
         box-sizing: border-box;
+        font-size: 0.9rem;
       }
       input:focus,
       select:focus {
@@ -73,18 +79,23 @@
         display: flex;
         background: #0d1117;
         border: 1px solid var(--border);
-        border-radius: 6px;
+        border-radius: 4px;
         margin-bottom: 20px;
         overflow: hidden;
       }
       .mode-btn {
         flex: 1;
-        padding: 10px;
+        padding: 8px;
         text-align: center;
         cursor: pointer;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         color: var(--text-sec);
-        transition: all 0.2s;
+        background: #0d1117;
+        transition: background 0.2s;
+      }
+      .mode-btn:hover {
+        background: var(--hover-bg);
+        color: var(--white);
       }
       .mode-btn.active {
         background: var(--accent);
@@ -139,7 +150,7 @@
         gap: 10px;
         background: var(--panel);
         padding: 15px;
-        border-radius: 8px;
+        border-radius: 6px;
         border: 1px solid var(--border);
         text-align: center;
       }
@@ -163,7 +174,7 @@
       .chart-container {
         background: var(--panel);
         padding: 20px;
-        border-radius: 8px;
+        border-radius: 6px;
         border: 1px solid var(--border);
         height: 350px;
         position: relative;
@@ -180,7 +191,7 @@
         display: flex;
         background: #0d1117;
         border: 1px solid var(--border);
-        border-radius: 6px;
+        border-radius: 4px;
         overflow: hidden;
       }
       .toggle-btn {
@@ -195,6 +206,10 @@
       .toggle-btn:last-child {
         border-right: none;
       }
+      .toggle-btn:hover {
+        background: var(--hover-bg);
+        color: var(--white);
+      }
       .toggle-btn.active {
         background: var(--accent);
         color: white;
@@ -205,7 +220,7 @@
         overflow-x: auto;
         background: var(--panel);
         padding: 20px;
-        border-radius: 8px;
+        border-radius: 6px;
         border: 1px solid var(--border);
       }
       table.heatmap {
@@ -229,6 +244,25 @@
         cursor: default;
       }
 
+      /* Footer */
+      footer {
+        grid-column: 1 / -1;
+        text-align: center;
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+        color: var(--text-sec);
+        font-size: 0.8rem;
+      }
+      footer a {
+        color: var(--text-sec);
+        text-decoration: none;
+      }
+      footer a:hover {
+        color: var(--accent);
+        text-decoration: underline;
+      }
+
       /* Loading & Modals */
       #loadingOverlay {
         display: none;
@@ -241,7 +275,7 @@
         z-index: 50;
         justify-content: center;
         align-items: center;
-        border-radius: 8px;
+        border-radius: 6px;
         flex-direction: column;
       }
       .spinner {
@@ -264,16 +298,16 @@
       }
 
       .status-msg {
-        padding: 15px;
+        padding: 10px;
         border-radius: 4px;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         margin-bottom: 15px;
         display: none;
         border: 1px solid transparent;
         text-align: left;
       }
       .status-error {
-        background: rgba(218, 54, 51, 0.1);
+        background: rgba(218, 54, 51, 0.2);
         border-color: var(--red);
         color: #ff7b72;
       }
@@ -296,19 +330,9 @@
         padding: 30px;
         border: 1px solid var(--border);
         width: 90%;
-        max-width: 480px;
-        border-radius: 12px;
-        animation: fadeIn 0.3s;
-      }
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(-20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
+        max-width: 450px;
+        border-radius: 8px;
+        text-align: center;
       }
       .modal h2 {
         margin-top: 0;
@@ -317,16 +341,14 @@
         margin-bottom: 15px;
       }
       .modal-steps {
-        background: var(--bg-elevated);
-        padding: 16px;
-        border-radius: 8px;
+        background: #0d1117;
+        padding: 15px;
+        border-radius: 4px;
         margin: 20px 0;
         border: 1px solid var(--border);
+        text-align: left;
         font-size: 0.9rem;
-        color: var(--text);
-      }
-      .modal-steps p {
-        margin: 8px 0;
+        line-height: 1.5;
       }
       .step-num {
         color: var(--accent);
@@ -342,7 +364,7 @@
       }
 
       .btn-primary {
-        background: linear-gradient(135deg, var(--accent), #1f6feb);
+        background: var(--accent);
         color: white;
         width: 100%;
         padding: 10px;
@@ -350,6 +372,9 @@
         border-radius: 4px;
         cursor: pointer;
         font-weight: bold;
+      }
+      .btn-primary:hover {
+        opacity: 0.9;
       }
       .btn-secondary {
         background: transparent;
@@ -382,7 +407,7 @@
   <body>
     <div class="container">
       <div class="controls">
-        <h2>Options Calculator</h2>
+        <h2>Strategy Builder</h2>
 
         <div class="mode-switcher">
           <div
@@ -515,7 +540,7 @@
           style="
             margin-top: 20px;
             border-top: 1px solid var(--border);
-            padding-top: 10px;
+            padding-top: 15px;
           "
         >
           <label id="priceLabel">Manual Price Override</label>
@@ -591,6 +616,15 @@
           </div>
         </div>
       </div>
+
+      <footer>
+        Made with <span style="color: #da3633">❤️</span> by
+        <a
+          href="https://github.com/shanehull/options.shanehull.dev"
+          target="_blank"
+          >Shane Hull</a
+        >
+      </footer>
     </div>
 
     <div id="apiModal" class="modal">
@@ -663,7 +697,6 @@
         const params = new URLSearchParams(window.location.search);
         const urlTicker = params.get("ticker");
 
-        // Set default manual date to 1 month from now
         let d = new Date();
         d.setMonth(d.getMonth() + 1);
         document.getElementById("expiryInputManual").value = d
@@ -682,8 +715,6 @@
       // --- TOGGLE INPUT MODE ---
       function toggleInputMode(mode) {
         isManualMode = mode === "manual";
-
-        // Toggle UI Classes
         document.getElementById("modeSearch").className = isManualMode
           ? "mode-btn"
           : "mode-btn active";
@@ -691,7 +722,6 @@
           ? "mode-btn active"
           : "mode-btn";
 
-        // Toggle Visibility
         const searchDiv = document.getElementById("searchInputs");
         const expSelect = document.getElementById("expirySelect");
         const expInput = document.getElementById("expiryInputManual");
@@ -710,13 +740,10 @@
           controls.style.opacity = "1";
           controls.style.pointerEvents = "auto";
 
-          // Set Defaults for Manual if empty
-          if (!document.getElementById("currentPrice").value) {
+          if (!document.getElementById("currentPrice").value)
             document.getElementById("currentPrice").value = 100;
-          }
-          if (!document.getElementById("ivInput").value) {
+          if (!document.getElementById("ivInput").value)
             document.getElementById("ivInput").value = 50;
-          }
         } else {
           searchDiv.style.display = "block";
           expSelect.style.display = "block";
@@ -725,7 +752,6 @@
           strInput.style.display = "none";
           priceLabel.innerText = "Manual Price Override";
         }
-
         calculateStrategy();
       }
 
@@ -748,7 +774,7 @@
 
       // --- URL STATE ---
       function updateUrlState() {
-        if (isRestoringState || isManualMode) return; // Don't save manual mode yet
+        if (isRestoringState || isManualMode) return;
         const params = new URLSearchParams();
         const ticker = document.getElementById("ticker").value;
         if (ticker.includes("Demo")) return;
@@ -796,13 +822,10 @@
           suggestionsBox.style.display = "none";
           return;
         }
-
         if (searchTimeout) clearTimeout(searchTimeout);
 
         searchTimeout = setTimeout(async () => {
           const apiKey = document.getElementById("apiKey").value.trim();
-
-          // If no key and not trying to type the demo string manually
           if (!apiKey) {
             if ("AAPL (DEMO)".startsWith(query)) return;
             showModal("instructions");
@@ -833,7 +856,6 @@
                 const div = document.createElement("div");
                 const name = i.name || i.shortname || i.longname || "";
                 div.innerHTML = `<strong>${i.symbol}</strong> - ${name}`;
-
                 div.onclick = () => {
                   if (searchTimeout) clearTimeout(searchTimeout);
                   tickerInput.value = i.symbol;
@@ -906,7 +928,6 @@
             showModal("429");
             return;
           }
-
           if (response.status === 403) {
             toggleLoading(false);
             showModal("403");
@@ -915,16 +936,13 @@
           if (!response.ok) throw new Error("API Connection Failed");
 
           const data = await response.json();
-
-          if (!data.body || data.body.length === 0) {
+          if (!data.body || data.body.length === 0)
             throw new Error(`No data found for symbol: ${symbol}`);
-          }
 
           const result = data.body[0];
           const dates = result.expirationDates || [];
           let options = result.options[0];
 
-          // Double Fetch Logic
           if (
             (!options ||
               (!options.calls && !options.puts) ||
@@ -933,7 +951,6 @@
           ) {
             const firstExp = dates[0];
             toggleLoading(true, "Fetching Chain...");
-
             const resp2 = await fetch(
               `https://${API_HOST}/api/v1/markets/options?ticker=${symbol}&expiration=${firstExp}&display=list`,
               {
@@ -944,9 +961,8 @@
               },
             );
             const data2 = await resp2.json();
-            if (data2.body && data2.body[0] && data2.body[0].options) {
+            if (data2.body && data2.body[0] && data2.body[0].options)
               options = data2.body[0].options[0];
-            }
           }
 
           if (
@@ -954,9 +970,7 @@
             ((!options.calls || options.calls.length === 0) &&
               (!options.puts || options.puts.length === 0))
           ) {
-            throw new Error(
-              `No options data available for ${symbol}. (Exchange data may not be supported)`,
-            );
+            throw new Error(`No options data available for ${symbol}.`);
           }
 
           const price = result.quote ? result.quote.regularMarketPrice : 0;
@@ -982,7 +996,6 @@
           }
 
           processOptions(options.calls, options.puts);
-
           controls.style.opacity = "1";
           controls.style.pointerEvents = "auto";
           toggleLoading(false);
@@ -1003,13 +1016,11 @@
           updateDemoChain();
           return;
         }
-
         const apiKey = document.getElementById("apiKey").value.trim();
         if (!apiKey) return;
 
         const symbol = document.getElementById("ticker").value.toUpperCase();
         const date = document.getElementById("expirySelect").value;
-
         toggleLoading(true, "Updating Chain...");
 
         try {
@@ -1017,14 +1028,11 @@
           const response = await fetch(url, {
             headers: { "X-RapidAPI-Key": apiKey, "X-RapidAPI-Host": API_HOST },
           });
-
           if (response.status === 429) {
             showModal("429");
             return;
           }
-
           const data = await response.json();
-
           if (data.body && data.body[0] && data.body[0].options) {
             const opt = data.body[0].options[0];
             processOptions(opt.calls, opt.puts);
@@ -1096,7 +1104,6 @@
           calculateStrategy();
           return;
         }
-
         const strike = parseFloat(
           document.getElementById("strikeSelect").value,
         );
@@ -1113,21 +1120,18 @@
         isRestoringState ? restoreStateFromUrl() : calculateStrategy();
       }
 
-      // --- SIMULATION HELPERS ---
+      // --- SIMULATION ---
       function getDemoChain(price, expiryTimestamp) {
         let now = new Date().getTime() / 1000;
         let T_years = (expiryTimestamp - now) / (365 * 24 * 60 * 60);
         if (T_years < 0.001) T_years = 0.001;
-
         let chain = { calls: [], puts: [] };
         let start = Math.floor(price * 0.7),
           end = Math.floor(price * 1.3);
-
         for (let i = start; i < end; i += 5) {
           let iv = 0.3 + Math.abs(i - price) / 2000;
           let cP = BlackScholes("call", price, i, T_years, 0.05, iv);
           let pP = BlackScholes("put", price, i, T_years, 0.05, iv);
-
           chain.calls.push({
             strike: i,
             lastPrice: cP > 0.01 ? cP : 0.01,
@@ -1159,10 +1163,8 @@
         let price = 225;
         document.getElementById("currentPrice").value = price;
         quoteData = { regularMarketPrice: price };
-
         let cleanSymbol = symbol.replace(/\s?\(DEMO\)/gi, "").trim();
         document.getElementById("ticker").value = cleanSymbol + " (Demo)";
-
         const now = new Date();
         const offsets = [30, 60, 90, 120, 150, 180, 270, 360, 720];
         const dates = offsets.map((days) => {
@@ -1170,27 +1172,22 @@
           d.setDate(d.getDate() + days);
           return Math.floor(d.getTime() / 1000);
         });
-
         const sel = document.getElementById("expirySelect");
         const currentSelection = sel.value;
         sel.innerHTML = "";
-
         dates.forEach((d) => {
           let opt = document.createElement("option");
           opt.value = d;
           opt.innerText = new Date(d * 1000).toISOString().split("T")[0];
           sel.appendChild(opt);
         });
-
         if (currentSelection && dates.includes(parseInt(currentSelection))) {
           sel.value = currentSelection;
         } else {
           sel.value = dates[0];
         }
-
         let chain = getDemoChain(price, parseInt(sel.value));
         currentChain = chain;
-
         updateStrikes();
         document.getElementById("chainControls").style.opacity = "1";
         document.getElementById("chainControls").style.pointerEvents = "auto";
@@ -1202,8 +1199,6 @@
         updateUrlState();
 
         let strike, type, side, contracts, S, rangePct, iv, T, opt;
-
-        // Common Inputs
         type = document.getElementById("typeSelect").value;
         side = document.getElementById("sideSelect").value;
         contracts = parseInt(document.getElementById("contracts").value);
@@ -1212,7 +1207,6 @@
           parseFloat(document.getElementById("rangeSlider").value) / 100;
         iv = parseFloat(document.getElementById("ivInput").value) / 100 || 0.5;
 
-        // Manual vs Search Inputs
         if (isManualMode) {
           strike = parseFloat(
             document.getElementById("strikeInputManual").value,
@@ -1220,10 +1214,8 @@
           let dateStr = document.getElementById("expiryInputManual").value;
           let expiryDate = new Date(dateStr);
           let now = new Date();
-          T = (expiryDate - now) / (1000 * 60 * 60 * 24 * 365); // Years
+          T = (expiryDate - now) / (1000 * 60 * 60 * 24 * 365);
           if (T < 0.001) T = 0.001;
-
-          // In manual, calculated theoretical price is the "Last Price"
           let theo = BlackScholes(type, S, strike, T, 0.05, iv);
           opt = { lastPrice: theo };
         } else {
@@ -1232,7 +1224,6 @@
           opt = list.find((o) => Math.abs(o.strike - strike) < 0.01);
           if (!opt)
             opt = { lastPrice: BlackScholes(type, S, strike, 0.1, 0.05, iv) };
-
           const expTimestamp = parseInt(
             document.getElementById("expirySelect").value,
           );
@@ -1250,7 +1241,6 @@
         document.getElementById("breakeven").innerText =
           `$${(type === "call" ? strike + opt.lastPrice : strike - opt.lastPrice).toFixed(2)}`;
 
-        // Max Loss/Profit Logic
         if (side === "long") {
           document.getElementById("maxLoss").innerText = `$${entry.toFixed(0)}`;
           document.getElementById("maxLoss").className = "stat-box negative";
@@ -1345,8 +1335,6 @@
             let theo = BlackScholes(type, p, K, d.t, 0.05, iv);
             let pl =
               (side === "long" ? theo - cost : cost - theo) * 100 * contracts;
-
-            // Value Mode: Contract Market Price (x100)
             let contractValue = theo * 100;
 
             if (gridDisplayMode === "percent") {
@@ -1396,7 +1384,6 @@
         for (let i = -steps; i <= steps; i++) {
           let p = S * (1 + (i / steps) * range);
           labels.push(p.toFixed(2));
-
           let valE = BlackScholes(type, p, K, 0.0001, 0.05, iv);
           let plE =
             (side === "long" ? valE - cost : cost - valE) * 100 * contracts;
@@ -1491,22 +1478,12 @@
         const title = modal.querySelector("h2");
         const body = document.getElementById("modalBody");
         const closeBtn = document.getElementById("modalCloseBtn");
-
-        // Clear previous content
         body.innerHTML = "";
         closeBtn.style.display = "none";
 
         if (type === "instructions") {
           title.innerText = "Get Your API Key";
-          body.innerHTML = `
-            <div class="modal-steps" style="text-align: left;">
-                <p><span class="step-num">Step 1:</span> Visit <a href="https://rapidapi.com/apidojo/api/yahoo-finance1" target="_blank">RapidAPI Yahoo Finance</a></p>
-                <p><span class="step-num">Step 2:</span> Log in and click "Subscribe to Test" (Free Tier)</p>
-                <p><span class="step-num">Step 3:</span> Copy your <code>X-RapidAPI-Key</code></p>
-                <p><span class="step-num">Step 4:</span> Paste it here to fetch live data</p>
-            </div>
-            <p style="font-size:0.9rem; color:var(--text-sec); margin-bottom:15px;">Or use <strong>AAPL (Demo)</strong> to see a demo.</p>
-        `;
+          body.innerHTML = `<div class="modal-steps" style="text-align: left;"><p><span class="step-num">Step 1:</span> Visit <a href="https://rapidapi.com/apidojo/api/yahoo-finance1" target="_blank">RapidAPI Yahoo Finance</a></p><p><span class="step-num">Step 2:</span> Log in and click "Subscribe to Test" (Free Tier)</p><p><span class="step-num">Step 3:</span> Copy your <code>X-RapidAPI-Key</code></p><p><span class="step-num">Step 4:</span> Paste it here to fetch live data</p></div><p style="font-size:0.9rem; color:var(--text-sec); margin-bottom:15px;">Or use <strong>AAPL (Demo)</strong> to see a demo.</p>`;
         } else if (type === "429") {
           title.innerText = "⚠️ Rate Limit Exceeded (429)";
           body.innerHTML = `<p>You have hit the request limit for this API Key. Please wait or upgrade your plan.</p>`;
@@ -1515,7 +1492,6 @@
           title.innerText = "⚠️ Access Denied (403)";
           body.innerHTML = `<p>Access forbidden. Please check your API Key.</p>`;
         }
-
         modal.style.display = "flex";
       }
       function closeModal() {
