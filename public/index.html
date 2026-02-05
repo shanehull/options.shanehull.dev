@@ -1259,7 +1259,10 @@
 
         document.getElementById("ticker").value = "AAPL (Demo)";
 
+        // Fix for expiration date mismatch: Normalize 'now' to midnight
         const now = new Date();
+        now.setHours(0, 0, 0, 0); // Crucial fix for refresh stability!
+
         const offsets = [30, 60, 90, 120, 150, 180, 270, 360, 720];
         const dates = offsets.map((days) => {
           const d = new Date(now);
