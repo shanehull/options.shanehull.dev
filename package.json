@@ -1,0 +1,14 @@
+{
+  "name": "options-calculator",
+  "version": "1.0.0",
+  "description": "Options trading calculator",
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler pages deploy public/",
+    "dev": "wrangler pages dev public/",
+    "build": "echo 'Static site - no build needed'"
+  },
+  "devDependencies": {
+    "wrangler": "^3.60.0"
+  }
+}
