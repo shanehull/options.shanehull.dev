@@ -473,7 +473,7 @@
               type="date"
               id="expiryInputManual"
               style="display: none"
-              onchange="calculateStrategy()"
+              oninput="calculateStrategy()"
             />
           </div>
 
@@ -764,7 +764,7 @@
           controls.style.opacity = "1";
           controls.style.pointerEvents = "auto";
 
-          // Reset data, set strung and underlying to 100
+          // DATA CLEAR LOGIC: Reset for manual Mode
           if (quoteData) {
             quoteData = null; // Clear old API data
             document.getElementById("currentPrice").value = 100;
@@ -774,6 +774,8 @@
             document.getElementById("currentPrice").value = 100;
           if (!document.getElementById("ivInput").value)
             document.getElementById("ivInput").value = 50;
+
+          calculateStrategy();
         } else {
           searchDiv.style.display = "block";
           expSelect.style.display = "block";
@@ -781,8 +783,10 @@
           strSelect.style.display = "block";
           strInput.style.display = "none";
           priceLabel.innerText = "Manual Price Override";
+
+          // Switch back to search: try fetching data immediately
+          fetchData();
         }
-        calculateStrategy();
       }
 
       // --- AUTO SAVE KEY ---
@@ -959,16 +963,15 @@
 
         hideStatus();
 
+        if (symbol === "AAPL (DEMO)") {
+          isDemoMode = true;
+          simulateData("AAPL");
+          return;
+        }
+
         if (!apiKey) {
           localStorage.removeItem("opscalc_apikey");
-
-          // STRICT CHECK: Only "AAPL (DEMO)" allowed
-          if (symbol === "AAPL (DEMO)") {
-            isDemoMode = true;
-            simulateData("AAPL");
-          } else {
-            showModal("instructions");
-          }
+          showModal("instructions");
           return;
         }
 
@@ -1192,7 +1195,6 @@
         const list = type === "call" ? currentChain.calls : currentChain.puts;
         const opt = list.find((o) => Math.abs(o.strike - strike) < 0.01);
 
-        // UPDATE CONTRACT PRICE FIELD
         if (opt) {
           document.getElementById("contractPrice").value =
             opt.lastPrice.toFixed(2);
@@ -1207,7 +1209,6 @@
 
       // --- SIMULATION HELPERS ---
       function getDemoChain(price, expiryTimestamp) {
-        // Recalculate theoretical prices based on new time-to-expiry
         let now = new Date().getTime() / 1000;
         let T_years = (expiryTimestamp - now) / (365 * 24 * 60 * 60);
         if (T_years < 0.001) T_years = 0.001;
@@ -1243,7 +1244,6 @@
 
         let newChain = getDemoChain(price, expiryDate);
 
-        // Update global chain but don't rebuild dropdowns
         currentChain = newChain;
         currentChain.calls.sort((a, b) => a.strike - b.strike);
         currentChain.puts.sort((a, b) => a.strike - b.strike);
@@ -1257,10 +1257,8 @@
         document.getElementById("currentPrice").value = price;
         quoteData = { regularMarketPrice: price };
 
-        // Force ticker to explicitly be what is expected in demo mode
         document.getElementById("ticker").value = "AAPL (Demo)";
 
-        // 1. Generate Realistic Dates (Monthly approx)
         const now = new Date();
         const offsets = [30, 60, 90, 120, 150, 180, 270, 360, 720];
         const dates = offsets.map((days) => {
@@ -1269,7 +1267,6 @@
           return Math.floor(d.getTime() / 1000);
         });
 
-        // 2. Populate Dropdown (Initial Only)
         const sel = document.getElementById("expirySelect");
         const currentSelection = sel.value;
         sel.innerHTML = "";
@@ -1287,7 +1284,6 @@
           sel.value = dates[0];
         }
 
-        // 3. Generate Initial Chain
         let chain = getDemoChain(price, parseInt(sel.value));
         currentChain = chain;
 
@@ -1328,7 +1324,6 @@
           strike = parseFloat(document.getElementById("strikeSelect").value);
           const list = type === "call" ? currentChain.calls : currentChain.puts;
           opt = list.find((o) => Math.abs(o.strike - strike) < 0.01);
-          // If no option found, simulate it
           if (!opt)
             opt = { lastPrice: BlackScholes(type, S, strike, 0.1, 0.05, iv) };
 
@@ -1340,14 +1335,12 @@
           if (T < 0.001) T = 0.001;
         }
 
-        // USE THE INPUT FIELD FOR COST
         let inputPrice = parseFloat(
           document.getElementById("contractPrice").value,
         );
         if (!isNaN(inputPrice)) {
           opt.lastPrice = inputPrice;
         } else {
-          // Update the input field if it was empty/invalid
           document.getElementById("contractPrice").value =
             opt.lastPrice.toFixed(2);
         }
@@ -1361,7 +1354,6 @@
         document.getElementById("breakeven").innerText =
           `$${(type === "call" ? strike + opt.lastPrice : strike - opt.lastPrice).toFixed(2)}`;
 
-        // Max Loss/Profit Logic
         if (side === "long") {
           document.getElementById("maxLoss").innerText = `$${entry.toFixed(0)}`;
           document.getElementById("maxLoss").className = "stat-box negative";
@@ -1375,7 +1367,6 @@
           document.getElementById("maxLoss").className = "stat-box negative";
         }
 
-        // Store calculation data object for quick grid switching
         latestStrategyCalc = {
           S,
           K: strike,
@@ -1451,11 +1442,8 @@
             let pl =
               (side === "long" ? theo - cost : cost - theo) * 100 * contracts;
 
-            // Value Mode: ONE contract's market value (x100)
-            // Agnostic of position size/direction
             let contractValue = theo * 100;
 
-            // Display Logic
             if (gridDisplayMode === "percent") {
               let roi = entry > 0 ? (pl / entry) * 100 : 0;
               td.innerText =
@@ -1466,7 +1454,6 @@
               td.innerText = Math.round(pl);
             }
 
-            // Color Logic (Always based on P/L)
             let opacity = Math.min(1, Math.abs(pl) / (entry || 500));
             if (pl > 0) {
               td.style.background = `rgba(35, 134, 54, ${opacity})`;
