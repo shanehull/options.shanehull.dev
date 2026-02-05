@@ -68,6 +68,30 @@
         outline: none;
       }
 
+      /* Mode Switcher */
+      .mode-switcher {
+        display: flex;
+        background: #0d1117;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        margin-bottom: 20px;
+        overflow: hidden;
+      }
+      .mode-btn {
+        flex: 1;
+        padding: 10px;
+        text-align: center;
+        cursor: pointer;
+        font-size: 0.9rem;
+        color: var(--text-sec);
+        transition: all 0.2s;
+      }
+      .mode-btn.active {
+        background: var(--accent);
+        color: white;
+        font-weight: bold;
+      }
+
       /* Custom Search Dropdown */
       .suggestions-list {
         position: absolute;
@@ -359,40 +383,75 @@
     <div class="container">
       <div class="controls">
         <h2>Options Calculator</h2>
+
+        <div class="mode-switcher">
+          <div
+            id="modeSearch"
+            class="mode-btn active"
+            onclick="toggleInputMode('search')"
+          >
+            Ticker Search
+          </div>
+          <div
+            id="modeManual"
+            class="mode-btn"
+            onclick="toggleInputMode('manual')"
+          >
+            Manual Input
+          </div>
+        </div>
+
         <div id="statusBox" class="status-msg"></div>
 
-        <div class="input-group">
-          <label>RapidAPI Key</label>
-          <input type="password" id="apiKey" placeholder="Paste Key Here" />
-        </div>
-
-        <div class="input-group">
-          <label>Ticker</label>
-          <div style="position: relative">
-            <input
-              type="text"
-              id="ticker"
-              value="AAPL"
-              autocomplete="off"
-              placeholder="e.g. TSLA, NVDA"
-              onkeydown="if(event.key === 'Enter') fetchData()"
-            />
+        <div id="searchInputs">
+          <div class="input-group">
+            <label>RapidAPI Key</label>
+            <input type="password" id="apiKey" placeholder="Paste Key Here" />
           </div>
-          <div id="suggestions" class="suggestions-list"></div>
+
+          <div class="input-group">
+            <label>Ticker</label>
+            <div style="position: relative">
+              <input
+                type="text"
+                id="ticker"
+                value="AAPL"
+                autocomplete="off"
+                placeholder="e.g. TSLA, NVDA"
+                onkeydown="if(event.key === 'Enter') fetchData()"
+              />
+            </div>
+            <div id="suggestions" class="suggestions-list"></div>
+          </div>
         </div>
 
-        <div id="chainControls" style="opacity: 0.5; pointer-events: none">
+        <div id="chainControls">
           <div class="input-group">
             <label>Expiration</label>
             <select
               id="expirySelect"
               onchange="fetchSpecificExpiration()"
             ></select>
+            <input
+              type="date"
+              id="expiryInputManual"
+              style="display: none"
+              onchange="calculateStrategy()"
+            />
           </div>
+
           <div class="input-group">
             <label>Strike</label>
             <select id="strikeSelect" onchange="onStrikeChange()"></select>
+            <input
+              type="number"
+              id="strikeInputManual"
+              value="100"
+              style="display: none"
+              oninput="calculateStrategy()"
+            />
           </div>
+
           <div class="input-group">
             <label>Type</label>
             <select id="typeSelect" onchange="onStrikeChange()">
@@ -400,6 +459,7 @@
               <option value="put">Put</option>
             </select>
           </div>
+
           <div class="input-group">
             <label>Position</label>
             <select id="sideSelect" onchange="calculateStrategy()">
@@ -407,6 +467,7 @@
               <option value="short">Sell (Short)</option>
             </select>
           </div>
+
           <div class="input-group">
             <label>Contracts</label>
             <input
@@ -417,6 +478,7 @@
               oninput="calculateStrategy()"
             />
           </div>
+
           <div class="input-group">
             <label>Implied Volatility (%)</label>
             <input
@@ -426,6 +488,7 @@
               oninput="calculateStrategy()"
             />
           </div>
+
           <div class="input-group">
             <label>Range (+/- %)</label>
             <div class="range-wrapper">
@@ -455,7 +518,7 @@
             padding-top: 10px;
           "
         >
-          <label>Manual Price Override</label>
+          <label id="priceLabel">Manual Price Override</label>
           <input
             type="number"
             id="currentPrice"
@@ -555,9 +618,10 @@
       let plChart = null;
       let searchTimeout = null;
       let isRestoringState = false;
-      let isDemoMode = false; // Explicit flag
+      let isDemoMode = false;
+      let isManualMode = false;
 
-      // Default View Mode: 'dollar', 'percent', or 'value'
+      // Default View Mode
       let gridDisplayMode = "dollar";
 
       // --- MATH ---
@@ -599,22 +663,78 @@
         const params = new URLSearchParams(window.location.search);
         const urlTicker = params.get("ticker");
 
+        // Set default manual date to 1 month from now
+        let d = new Date();
+        d.setMonth(d.getMonth() + 1);
+        document.getElementById("expiryInputManual").value = d
+          .toISOString()
+          .split("T")[0];
+
         if (urlTicker) {
           document.getElementById("ticker").value = urlTicker;
           isRestoringState = true;
           fetchData();
         } else {
-          // Initialize with demo data
           simulateData("AAPL");
         }
       })();
 
-      // --- AUTO SAVE KEY ON INPUT ---
+      // --- TOGGLE INPUT MODE ---
+      function toggleInputMode(mode) {
+        isManualMode = mode === "manual";
+
+        // Toggle UI Classes
+        document.getElementById("modeSearch").className = isManualMode
+          ? "mode-btn"
+          : "mode-btn active";
+        document.getElementById("modeManual").className = isManualMode
+          ? "mode-btn active"
+          : "mode-btn";
+
+        // Toggle Visibility
+        const searchDiv = document.getElementById("searchInputs");
+        const expSelect = document.getElementById("expirySelect");
+        const expInput = document.getElementById("expiryInputManual");
+        const strSelect = document.getElementById("strikeSelect");
+        const strInput = document.getElementById("strikeInputManual");
+        const priceLabel = document.getElementById("priceLabel");
+        const controls = document.getElementById("chainControls");
+
+        if (isManualMode) {
+          searchDiv.style.display = "none";
+          expSelect.style.display = "none";
+          expInput.style.display = "block";
+          strSelect.style.display = "none";
+          strInput.style.display = "block";
+          priceLabel.innerText = "Underlying Price";
+          controls.style.opacity = "1";
+          controls.style.pointerEvents = "auto";
+
+          // Set Defaults for Manual if empty
+          if (!document.getElementById("currentPrice").value) {
+            document.getElementById("currentPrice").value = 100;
+          }
+          if (!document.getElementById("ivInput").value) {
+            document.getElementById("ivInput").value = 50;
+          }
+        } else {
+          searchDiv.style.display = "block";
+          expSelect.style.display = "block";
+          expInput.style.display = "none";
+          strSelect.style.display = "block";
+          strInput.style.display = "none";
+          priceLabel.innerText = "Manual Price Override";
+        }
+
+        calculateStrategy();
+      }
+
+      // --- AUTO SAVE KEY ---
       document.getElementById("apiKey").addEventListener("input", function (e) {
         localStorage.setItem("opscalc_apikey", e.target.value.trim());
       });
 
-      // --- TOGGLE UI ---
+      // --- TOGGLE GRID UI ---
       function setGridMode(mode) {
         gridDisplayMode = mode;
         document.getElementById("toggleDollar").className =
@@ -628,10 +748,10 @@
 
       // --- URL STATE ---
       function updateUrlState() {
-        if (isRestoringState) return;
+        if (isRestoringState || isManualMode) return; // Don't save manual mode yet
         const params = new URLSearchParams();
         const ticker = document.getElementById("ticker").value;
-        // Allow updating URL in demo mode too!
+        if (ticker.includes("Demo")) return;
 
         params.set("ticker", ticker);
         params.set("exp", document.getElementById("expirySelect").value);
@@ -684,9 +804,7 @@
 
           // If no key and not trying to type the demo string manually
           if (!apiKey) {
-            // Allow them to type "AAPL (DEMO)" without interruption
             if ("AAPL (DEMO)".startsWith(query)) return;
-
             showModal("instructions");
             return;
           }
@@ -755,11 +873,9 @@
 
         if (!apiKey) {
           localStorage.removeItem("opscalc_apikey");
-
-          // STRICT CHECK: Only "AAPL (DEMO)" allowed
           let cleanSymbol = symbol.replace(/\s?\(DEMO\)/gi, "").trim();
           if (cleanSymbol === "AAPL") {
-            isDemoMode = true; // Set Flag
+            isDemoMode = true;
             simulateData("AAPL");
           } else {
             showModal("instructions");
@@ -767,7 +883,7 @@
           return;
         }
 
-        isDemoMode = false; // Unset flag
+        isDemoMode = false;
         localStorage.setItem("opscalc_apikey", apiKey);
 
         toggleLoading(true, "Fetching Ticker...");
@@ -883,7 +999,6 @@
       }
 
       async function fetchSpecificExpiration() {
-        // If we are in demo mode, skip API entirely
         if (isDemoMode) {
           updateDemoChain();
           return;
@@ -977,6 +1092,11 @@
       }
 
       function onStrikeChange() {
+        if (isManualMode) {
+          calculateStrategy();
+          return;
+        }
+
         const strike = parseFloat(
           document.getElementById("strikeSelect").value,
         );
@@ -995,7 +1115,6 @@
 
       // --- SIMULATION HELPERS ---
       function getDemoChain(price, expiryTimestamp) {
-        // Recalculate theoretical prices based on new time-to-expiry
         let now = new Date().getTime() / 1000;
         let T_years = (expiryTimestamp - now) / (365 * 24 * 60 * 60);
         if (T_years < 0.001) T_years = 0.001;
@@ -1028,19 +1147,15 @@
         let expiryDate = parseInt(
           document.getElementById("expirySelect").value,
         );
-
         let newChain = getDemoChain(price, expiryDate);
-
-        // Update global chain but don't rebuild dropdowns
         currentChain = newChain;
         currentChain.calls.sort((a, b) => a.strike - b.strike);
         currentChain.puts.sort((a, b) => a.strike - b.strike);
-
         updateStrikes();
       }
 
       function simulateData(symbol) {
-        isDemoMode = true; // Ensure flag is set
+        isDemoMode = true;
         let price = 225;
         document.getElementById("currentPrice").value = price;
         quoteData = { regularMarketPrice: price };
@@ -1048,7 +1163,6 @@
         let cleanSymbol = symbol.replace(/\s?\(DEMO\)/gi, "").trim();
         document.getElementById("ticker").value = cleanSymbol + " (Demo)";
 
-        // 1. Generate Realistic Dates
         const now = new Date();
         const offsets = [30, 60, 90, 120, 150, 180, 270, 360, 720];
         const dates = offsets.map((days) => {
@@ -1057,7 +1171,6 @@
           return Math.floor(d.getTime() / 1000);
         });
 
-        // 2. Populate Dropdown (Initial Only)
         const sel = document.getElementById("expirySelect");
         const currentSelection = sel.value;
         sel.innerHTML = "";
@@ -1075,7 +1188,6 @@
           sel.value = dates[0];
         }
 
-        // 3. Generate Initial Chain
         let chain = getDemoChain(price, parseInt(sel.value));
         currentChain = chain;
 
@@ -1086,32 +1198,48 @@
 
       // --- CALCULATION ---
       function calculateStrategy() {
-        if (!currentChain || !quoteData) return;
+        if (!isManualMode && (!currentChain || !quoteData)) return;
         updateUrlState();
 
-        const strike = parseFloat(
-          document.getElementById("strikeSelect").value,
-        );
-        const type = document.getElementById("typeSelect").value;
-        const side = document.getElementById("sideSelect").value;
-        const contracts = parseInt(document.getElementById("contracts").value);
-        const S = parseFloat(document.getElementById("currentPrice").value);
-        const rangePct =
+        let strike, type, side, contracts, S, rangePct, iv, T, opt;
+
+        // Common Inputs
+        type = document.getElementById("typeSelect").value;
+        side = document.getElementById("sideSelect").value;
+        contracts = parseInt(document.getElementById("contracts").value);
+        S = parseFloat(document.getElementById("currentPrice").value);
+        rangePct =
           parseFloat(document.getElementById("rangeSlider").value) / 100;
-        const iv =
-          parseFloat(document.getElementById("ivInput").value) / 100 || 0.5;
+        iv = parseFloat(document.getElementById("ivInput").value) / 100 || 0.5;
 
-        const list = type === "call" ? currentChain.calls : currentChain.puts;
-        let opt = list.find((o) => Math.abs(o.strike - strike) < 0.01);
-        if (!opt)
-          opt = { lastPrice: BlackScholes(type, S, strike, 0.1, 0.05, iv) };
+        // Manual vs Search Inputs
+        if (isManualMode) {
+          strike = parseFloat(
+            document.getElementById("strikeInputManual").value,
+          );
+          let dateStr = document.getElementById("expiryInputManual").value;
+          let expiryDate = new Date(dateStr);
+          let now = new Date();
+          T = (expiryDate - now) / (1000 * 60 * 60 * 24 * 365); // Years
+          if (T < 0.001) T = 0.001;
 
-        const expTimestamp = parseInt(
-          document.getElementById("expirySelect").value,
-        );
-        const now = Math.floor(Date.now() / 1000);
-        let T = (expTimestamp - now) / (365 * 24 * 60 * 60);
-        if (T < 0.001) T = 0.001;
+          // In manual, calculated theoretical price is the "Last Price"
+          let theo = BlackScholes(type, S, strike, T, 0.05, iv);
+          opt = { lastPrice: theo };
+        } else {
+          strike = parseFloat(document.getElementById("strikeSelect").value);
+          const list = type === "call" ? currentChain.calls : currentChain.puts;
+          opt = list.find((o) => Math.abs(o.strike - strike) < 0.01);
+          if (!opt)
+            opt = { lastPrice: BlackScholes(type, S, strike, 0.1, 0.05, iv) };
+
+          const expTimestamp = parseInt(
+            document.getElementById("expirySelect").value,
+          );
+          const now = Math.floor(Date.now() / 1000);
+          T = (expTimestamp - now) / (365 * 24 * 60 * 60);
+          if (T < 0.001) T = 0.001;
+        }
 
         const entry = opt.lastPrice * 100 * contracts;
         const txt =
@@ -1218,11 +1346,9 @@
             let pl =
               (side === "long" ? theo - cost : cost - theo) * 100 * contracts;
 
-            // Value Mode: ONE contract's market value (x100)
-            // Agnostic of position size/direction
+            // Value Mode: Contract Market Price (x100)
             let contractValue = theo * 100;
 
-            // Display Logic
             if (gridDisplayMode === "percent") {
               let roi = entryTotal > 0 ? (pl / entryTotal) * 100 : 0;
               td.innerText =
@@ -1233,7 +1359,6 @@
               td.innerText = Math.round(pl);
             }
 
-            // Color Logic (Always based on P/L)
             let opacity = Math.min(1, Math.abs(pl) / (entryTotal || 500));
             if (pl > 0) {
               td.style.background = `rgba(35, 134, 54, ${opacity})`;
