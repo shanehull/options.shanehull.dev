@@ -74,6 +74,18 @@
         outline: none;
       }
 
+      /* Date Picker Specifics */
+      input[type="date"] {
+        cursor: text;
+        position: relative;
+      }
+      input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+        cursor: pointer;
+        position: absolute;
+        right: 10px;
+      }
+
       /* Mode Switcher */
       .mode-switcher {
         display: flex;
@@ -461,6 +473,7 @@
               type="date"
               id="expiryInputManual"
               style="display: none"
+              onclick="try{this.showPicker()}catch(e){}"
               onchange="calculateStrategy()"
             />
           </div>
@@ -752,6 +765,12 @@
           controls.style.opacity = "1";
           controls.style.pointerEvents = "auto";
 
+          // Reset data, set strung and underlying to 100
+          if (quoteData) {
+            quoteData = null; // Clear old API data
+            document.getElementById("currentPrice").value = 100;
+            document.getElementById("strikeInputManual").value = 100;
+          }
           if (!document.getElementById("currentPrice").value)
             document.getElementById("currentPrice").value = 100;
           if (!document.getElementById("ivInput").value)
@@ -1189,6 +1208,7 @@
 
       // --- SIMULATION HELPERS ---
       function getDemoChain(price, expiryTimestamp) {
+        // Recalculate theoretical prices based on new time-to-expiry
         let now = new Date().getTime() / 1000;
         let T_years = (expiryTimestamp - now) / (365 * 24 * 60 * 60);
         if (T_years < 0.001) T_years = 0.001;
