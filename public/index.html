@@ -494,6 +494,16 @@
           </div>
 
           <div class="input-group">
+            <label>Contract Price ($)</label>
+            <input
+              type="number"
+              id="contractPrice"
+              step="0.01"
+              oninput="calculateStrategy()"
+            />
+          </div>
+
+          <div class="input-group">
             <label>Contracts</label>
             <input
               type="number"
@@ -1137,7 +1147,11 @@
         const type = document.getElementById("typeSelect").value;
         const list = type === "call" ? currentChain.calls : currentChain.puts;
         const opt = list.find((o) => Math.abs(o.strike - strike) < 0.01);
+
+        // UPDATE CONTRACT PRICE FIELD
         if (opt) {
+          document.getElementById("contractPrice").value =
+            opt.lastPrice.toFixed(2); // NEW: Update input
           const params = new URLSearchParams(window.location.search);
           if (!(isRestoringState && params.get("iv")))
             document.getElementById("ivInput").value = (opt.iv * 100).toFixed(
@@ -1199,7 +1213,6 @@
         document.getElementById("currentPrice").value = price;
         quoteData = { regularMarketPrice: price };
 
-        // Force ticker to explicitly be what is expected in demo mode
         document.getElementById("ticker").value = "AAPL (Demo)";
 
         // 1. Generate Realistic Dates (Monthly approx)
@@ -1267,6 +1280,7 @@
           strike = parseFloat(document.getElementById("strikeSelect").value);
           const list = type === "call" ? currentChain.calls : currentChain.puts;
           opt = list.find((o) => Math.abs(o.strike - strike) < 0.01);
+          // If no option found, simulate it
           if (!opt)
             opt = { lastPrice: BlackScholes(type, S, strike, 0.1, 0.05, iv) };
 
@@ -1278,6 +1292,14 @@
           if (T < 0.001) T = 0.001;
         }
 
+        // USE THE INPUT FIELD FOR COST
+        let inputPrice = parseFloat(
+          document.getElementById("contractPrice").value,
+        );
+        if (!isNaN(inputPrice)) {
+          opt.lastPrice = inputPrice; // Override with user input
+        }
+
         const entry = opt.lastPrice * 100 * contracts;
         const txt =
           side === "long"
@@ -1287,6 +1309,7 @@
         document.getElementById("breakeven").innerText =
           `$${(type === "call" ? strike + opt.lastPrice : strike - opt.lastPrice).toFixed(2)}`;
 
+        // Max Loss/Profit Logic
         if (side === "long") {
           document.getElementById("maxLoss").innerText = `$${entry.toFixed(0)}`;
           document.getElementById("maxLoss").className = "stat-box negative";
