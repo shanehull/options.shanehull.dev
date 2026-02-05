@@ -1144,14 +1144,14 @@
           currentChain.calls.push({
             strike: o.strike,
             lastPrice: o.lastPrice,
-            iv: o.impliedVolatility > 0 ? o.impliedVolatility : 0.5,
+            iv: o.impliedVolatility > 0.0 ? o.impliedVolatility : 0.2,
           }),
         );
         (puts || []).forEach((o) =>
           currentChain.puts.push({
             strike: o.strike,
             lastPrice: o.lastPrice,
-            iv: o.impliedVolatility > 0 ? o.impliedVolatility : 0.5,
+            iv: o.impliedVolatility > 0.0 ? o.impliedVolatility : 0.2,
           }),
         );
         currentChain.calls.sort((a, b) => a.strike - b.strike);
