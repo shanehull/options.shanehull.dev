@@ -910,6 +910,10 @@
             return;
           }
 
+          suggestionsBox.style.display = "block";
+          suggestionsBox.innerHTML =
+            '<div style="padding:10px; color:var(--text-sec); font-size:0.8rem;">Searching...</div>';
+
           try {
             const res = await fetch(
               `https://${API_HOST}/api/v1/markets/search?search=${query}`,
@@ -952,7 +956,7 @@
             console.log("Search skipped");
             suggestionsBox.style.display = "none";
           }
-        }, 300);
+        }, 200);
       });
 
       document.addEventListener("click", function (e) {
