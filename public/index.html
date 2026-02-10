@@ -158,7 +158,7 @@
       }
       .stats-bar {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 10px;
         background: var(--panel);
         padding: 15px;
@@ -593,6 +593,9 @@
             <small>Cost/Credit</small><span id="entryCost">-</span>
           </div>
           <div class="stat-box">
+            <small>Fair Value</small><span id="fairValue">-</span>
+          </div>
+          <div class="stat-box">
             <small>Max Profit</small><span id="maxProfit">-</span>
           </div>
           <div class="stat-box">
@@ -850,7 +853,6 @@
         const params = new URLSearchParams(window.location.search);
         const mode = params.get("mode");
 
-        // Set flag to prevent intermediate calcs
         isRestoringState = true;
 
         if (mode === "manual") {
@@ -878,7 +880,6 @@
           setVal("expiryInputManual", "exp");
 
           isRestoringState = false;
-          // Trigger calc with explicit 'contract' source to use the restored cprice
           calculateStrategy("contract");
         } else {
           setVal("expirySelect", "exp");
@@ -956,7 +957,7 @@
             console.log("Search skipped");
             suggestionsBox.style.display = "none";
           }
-        }, 200);
+        }, 250);
       });
 
       document.addEventListener("click", function (e) {
@@ -979,7 +980,7 @@
         if (symbol === "AAPL (DEMO)") {
           isDemoMode = true;
           simulateData("AAPL");
-          isRestoringState = false; // Ensure restored state is reset
+          isRestoringState = false;
           return;
         }
 
@@ -1365,15 +1366,18 @@
           if (T < 0.001) T = 0.001;
         }
 
-        // Logic for Contract Price Update in Manual Mode
+        let fairValuePrice = BlackScholes(type, S, strike, T, 0.05, iv);
+        document.getElementById("fairValue").innerText =
+          `$${fairValuePrice.toFixed(2)}`;
+
         let inputField = document.getElementById("contractPrice");
         let inputVal = parseFloat(inputField.value);
 
         if (
           isManualMode &&
           (source === "price" ||
-            source === "strike" ||
             source === "expiry" ||
+            source === "strike" ||
             source === "type" ||
             isNaN(inputVal))
         ) {
@@ -1651,8 +1655,6 @@
         const title = modal.querySelector("h2");
         const body = document.getElementById("modalBody");
         const closeBtn = document.getElementById("modalCloseBtn");
-
-        // Clear previous content
         body.innerHTML = "";
         closeBtn.style.display = "none";
 
@@ -1675,7 +1677,6 @@
           title.innerText = "⚠️ Access Denied (403)";
           body.innerHTML = `<p>Access forbidden. Please check your API Key.</p>`;
         }
-
         modal.style.display = "flex";
       }
       function closeModal() {
